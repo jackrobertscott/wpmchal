@@ -7,8 +7,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import {addkey} from './utils/addkey'
-import {getRandomWords} from './utils/words'
+import {addkey} from '../utils/addkey'
+import {getRandomWords} from '../utils/words'
+import {HighScores} from './HighScores'
+import {SaveScore} from './SaveScore'
 /**
  *
  */
@@ -16,9 +18,15 @@ export const App: FC<{}> = () => {
   const [txt, txtSet] = useState('')
   const [usrTxt, usrTxtSet] = useState('')
   const [wpm, wpmSet] = useState<number>()
+  const [, reloadSet] = useState(Date.now())
+  const [shwSave, shwSaveSet] = useState(false)
   const [timeStart, timeStartSet] = useState<number>()
   const refInput = useRef<HTMLInputElement>()
   const retry = () => {
+    setTimeout(() => {
+      refInput.current?.focus()
+      reloadSet(Date.now())
+    })
     txtSet(getRandomWords(10).join(' '))
     usrTxtSet('')
   }
@@ -27,7 +35,6 @@ export const App: FC<{}> = () => {
    */
   useEffect(() => {
     retry()
-    refInput.current?.focus()
   }, [])
   /**
    * Listen to the user text change and detect when user finishes passage.
@@ -41,18 +48,14 @@ export const App: FC<{}> = () => {
         .filter((i, index) => i === usrArr[index])
       const charCorrect = correctArr.join('').length + (correctArr.length - 1)
       const wpmTmp = (60 / time) * (charCorrect / 5)
-      console.log(time, charCorrect)
       wpmSet(Math.trunc(wpmTmp * 100) / 100)
+      shwSaveSet(true)
       timeStartSet(undefined)
     }
   }, [usrTxt.length]) // eslint-disable-line
   return $('div', {
-    /**
-     * Focus the input whenever the user clicks on the element.
-     */
     onClick: () => {
-      refInput.current?.focus()
-      console.log('focused')
+      reloadSet(Date.now())
     },
     className: css({
       width: '100%',
@@ -96,6 +99,15 @@ export const App: FC<{}> = () => {
          * will give it color.
          */
         $('div', {
+          /**
+           * Focus the input whenever the user clicks on the element.
+           */
+          onClick: () => {
+            if (document.activeElement !== refInput.current) {
+              refInput.current?.focus()
+              reloadSet(Date.now())
+            }
+          },
           className: css({
             fontSize: 20,
             color: 'hsl(0, 0%, 70%)',
@@ -105,7 +117,7 @@ export const App: FC<{}> = () => {
             '.error': {
               color: 'hsl(0, 100%, 50%)',
             },
-            '.cursor': {
+            '.cursor': document.activeElement === refInput.current && {
               background: 'hsl(0, 0%, 10%)',
             },
           }),
@@ -138,9 +150,30 @@ export const App: FC<{}> = () => {
             border: '2px solid black',
           }),
         }),
+        /**
+         * WPM Reading.
+         */
         $('div', {
           children: 'Last wpm: ' + wpm,
         }),
+        /**
+         *
+         */
+        $(HighScores, {
+          reload: shwSave,
+        }),
+        /**
+         *
+         */
+        shwSave &&
+          !!wpm &&
+          $(SaveScore, {
+            wpm,
+            exit: () => {
+              shwSaveSet(false)
+              retry()
+            },
+          }),
       ]),
     }),
   })

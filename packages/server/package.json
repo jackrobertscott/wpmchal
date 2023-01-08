@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@types/node": "^18.11.18",
-    "micro": "^10.0.1"
+    "micro": "^10.0.1",
+    "mongodb": "^4.13.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.20",
