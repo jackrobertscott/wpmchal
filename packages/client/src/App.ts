@@ -15,16 +15,41 @@ import {getRandomWords} from './utils/words'
 export const App: FC<{}> = () => {
   const [txt, txtSet] = useState('')
   const [usrTxt, usrTxtSet] = useState('')
+  const [wpm, wpmSet] = useState<number>()
+  const [timeStart, timeStartSet] = useState<number>()
   const refInput = useRef<HTMLInputElement>()
   const retry = () => {
-    txtSet(getRandomWords(50).join(' '))
+    txtSet(getRandomWords(10).join(' '))
     usrTxtSet('')
   }
+  /**
+   * Add text when the component mounts.
+   */
   useEffect(() => {
     retry()
     refInput.current?.focus()
   }, [])
+  /**
+   * Listen to the user text change and detect when user finishes passage.
+   */
+  useEffect(() => {
+    if (timeStart && usrTxt.length >= txt.length && txt.length !== 0) {
+      const time = (Date.now() - timeStart) / 1000
+      const usrArr = usrTxt.split(' ')
+      const correctArr = txt
+        .split(' ')
+        .filter((i, index) => i === usrArr[index])
+      const charCorrect = correctArr.join('').length + (correctArr.length - 1)
+      const wpmTmp = (60 / time) * (charCorrect / 5)
+      console.log(time, charCorrect)
+      wpmSet(Math.trunc(wpmTmp * 100) / 100)
+      timeStartSet(undefined)
+    }
+  }, [usrTxt.length]) // eslint-disable-line
   return $('div', {
+    /**
+     * Focus the input whenever the user clicks on the element.
+     */
     onClick: () => {
       refInput.current?.focus()
       console.log('focused')
@@ -49,10 +74,16 @@ export const App: FC<{}> = () => {
         border: '2px dashed black',
       }),
       children: addkey([
+        /**
+         * A hidden input which is where the user's input will be collected.
+         * The reason I've used an input is so that all keyboard events are collected
+         * such as when you press "Alt+Backspace" which will delete a whole word.
+         */
         $('input', {
           ref: refInput,
           value: usrTxt,
           onChange: (e: ChangeEvent<HTMLInputElement>) => {
+            if (usrTxt.length === 0) timeStartSet(Date.now())
             usrTxtSet(e.target.value)
           },
           className: css({
@@ -60,6 +91,10 @@ export const App: FC<{}> = () => {
             opacity: 0, // hide the input
           }),
         }),
+        /**
+         * Show the passage of text. Each character is wrapped in a span which
+         * will give it color.
+         */
         $('div', {
           className: css({
             fontSize: 20,
@@ -91,6 +126,9 @@ export const App: FC<{}> = () => {
             })
           }),
         }),
+        /**
+         * Simple retry button.
+         */
         $('button', {
           children: 'Retry',
           onClick: () => retry(),
@@ -99,6 +137,9 @@ export const App: FC<{}> = () => {
             background: 'hsl(0, 0%, 30%)',
             border: '2px solid black',
           }),
+        }),
+        $('div', {
+          children: 'Last wpm: ' + wpm,
         }),
       ]),
     }),
